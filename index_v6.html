@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Form Coach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#111A1B;
+    --surface-1:#182524;
+    --surface-2:#1F302E;
+    --border:#2C403D;
+    --text-primary:#EAF3F1;
+    --text-secondary:#9FB3AF;
+    --text-muted:#6C807C;
+    --mint:#4FBDBA;
+    --coral:#F2704A;
+    --violet:#B486F0;
+    --sky:#5FA8D3;
+    --success:#63B37C;
+    --success-bg:rgba(99,179,124,0.15);
+    --danger:#E15252;
+    --danger-bg:rgba(225,82,82,0.15);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    min-height:100vh;
+    background:var(--bg);
+    color:var(--text-primary);
+    font-family:'Inter',system-ui,sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:28px 14px 60px;
+  }
+  .app{ width:100%; max-width:460px; }
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:26px;
+    margin:0 0 2px;
+    letter-spacing:-0.2px;
+  }
+  .tagline{ font-size:13px; color:var(--text-secondary); margin:0 0 18px; }
+
+  .mode-toggle{ display:flex; gap:6px; margin-bottom:12px; background:var(--surface-1); padding:4px; border-radius:10px; }
+  .mode-btn{ flex:1; padding:9px 0; border-radius:8px; border:none; background:transparent; color:var(--text-secondary); font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12.5px; cursor:pointer; }
+  .mode-btn.active.yoga{ background:rgba(79,189,186,0.18); color:var(--mint); }
+  .mode-btn.active.gym{ background:rgba(242,112,74,0.18); color:var(--coral); }
+  .mode-btn.active.dance{ background:rgba(180,134,240,0.18); color:var(--violet); }
+  .mode-btn.active.rehab{ background:rgba(95,168,211,0.18); color:var(--sky); }
+
+  .exercise-row{ display:flex; gap:6px; overflow-x:auto; margin-bottom:14px; padding-bottom:2px; }
+  .ex-chip{ flex:0 0 auto; padding:8px 14px; border-radius:20px; border:1px solid var(--border); background:var(--surface-1); color:var(--text-secondary); font-size:12.5px; font-family:inherit; cursor:pointer; white-space:nowrap; }
+  .ex-chip.active{ border-color:var(--mint); color:var(--text-primary); background:var(--surface-2); }
+  .gym-mode .ex-chip.active{ border-color:var(--coral); }
+  .dance-mode .ex-chip.active{ border-color:var(--violet); }
+  .rehab-mode .ex-chip.active{ border-color:var(--sky); }
+
+  .stage{ position:relative; width:100%; aspect-ratio:3/4; background:var(--surface-1); border-radius:14px; overflow:hidden; margin-bottom:12px; transition:box-shadow 0.15s ease; }
+  .stage.hit{ box-shadow: inset 0 0 0 4px var(--success); }
+  .stage.miss{ box-shadow: inset 0 0 0 4px var(--danger); }
+  .mirror{ position:absolute; inset:0; transform:scaleX(-1); }
+  video{ width:100%; height:100%; object-fit:cover; display:block; }
+  canvas.overlay{ position:absolute; top:0; left:0; width:100%; height:100%; }
+  .form-legend{ position:absolute; left:10px; bottom:10px; z-index:3; display:flex; gap:7px; flex-wrap:wrap; }
+  .legend-chip{ background:rgba(17,26,27,0.75); backdrop-filter:blur(4px); border-radius:8px; padding:5px 8px; font-size:10px; color:var(--text-secondary); }
+  .legend-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:4px; }
+  .legend-dot.good{ background:var(--success); } .legend-dot.warn{ background:#E0B84A; } .legend-dot.bad{ background:var(--danger); }
+  .coach-measure{ position:absolute; left:10px; top:10px; z-index:3; background:rgba(17,26,27,0.78); backdrop-filter:blur(4px); border-radius:9px; padding:7px 10px; font-size:11px; color:var(--text-secondary); display:none; }
+  .coach-measure strong{ color:var(--text-primary); font-family:'Space Grotesk',sans-serif; font-size:14px; }
+
+  .stage-overlay{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; background:rgba(17,26,27,0.9); text-align:center; padding:20px; z-index:5; }
+  .stage-overlay p{ font-size:13px; color:var(--text-secondary); margin:0; max-width:280px; }
+  .start-btn{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14px; padding:12px 24px; border-radius:10px; border:none; background:var(--mint); color:#0B1817; cursor:pointer; }
+  .start-btn.dance-start{ background:var(--violet); }
+  .start-btn.rehab-start{ background:var(--sky); color:#0B1817; width:100%; margin-top:10px; }
+  .badge{ position:absolute; top:10px; right:10px; background:rgba(17,26,27,0.75); backdrop-filter:blur(4px); border-radius:10px; padding:6px 12px; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px; z-index:3; }
+  .badge .lbl{ font-family:'Inter',sans-serif; font-weight:400; font-size:10px; color:var(--text-secondary); display:block; text-align:center; }
+
+  .dance-hud{ position:absolute; left:10px; right:10px; top:10px; z-index:3; }
+  .move-name{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:19px; background:rgba(17,26,27,0.75); backdrop-filter:blur(4px); border-radius:10px; padding:8px 12px; display:inline-block; }
+  .move-bar-track{ height:5px; background:rgba(255,255,255,0.15); border-radius:3px; margin-top:6px; overflow:hidden; }
+  .move-bar-fill{ height:100%; background:var(--violet); width:100%; }
+
+  .rehab-hud{ position:absolute; left:10px; right:10px; top:10px; z-index:3; text-align:center; }
+  .rehab-value{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:34px; background:rgba(17,26,27,0.75); backdrop-filter:blur(4px); border-radius:12px; padding:8px 16px; display:inline-block; color:var(--sky); }
+  .rehab-value .goal{ font-size:13px; color:var(--text-secondary); font-weight:500; display:block; margin-top:-2px; }
+  .rehab-timer-track{ height:5px; background:rgba(255,255,255,0.15); border-radius:3px; margin-top:6px; overflow:hidden; }
+  .rehab-timer-fill{ height:100%; background:var(--sky); width:100%; }
+
+  .feedback-card{ border-radius:12px; padding:14px 16px; margin-bottom:10px; }
+  .feedback-card.ok{ background:var(--success-bg); border:1px solid rgba(99,179,124,0.35); }
+  .feedback-card.bad{ background:var(--danger-bg); border:1px solid rgba(225,82,82,0.35); }
+  .feedback-card.idle{ background:var(--surface-1); border:1px solid var(--border); }
+  .feedback-status{ display:flex; align-items:center; gap:8px; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14.5px; margin-bottom:2px; }
+  .feedback-status.ok{ color:var(--success); }
+  .feedback-status.bad{ color:var(--danger); }
+  .dot{ width:8px; height:8px; border-radius:50%; }
+  .dot.ok{ background:var(--success); }
+  .dot.bad{ background:var(--danger); }
+  ul.cues{ margin:6px 0 0; padding-left:18px; font-size:13px; color:var(--text-secondary); }
+  ul.cues li{ margin-bottom:3px; }
+
+  .dance-results{ text-align:center; padding:6px 0 2px; }
+  .dance-results .score{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:32px; color:var(--violet); }
+  .dance-results .sub{ font-size:13px; color:var(--text-secondary); margin-top:2px; }
+
+  .rehab-panel{ border-radius:12px; padding:14px 16px; margin-bottom:10px; background:var(--surface-1); border:1px solid var(--border); }
+  .rehab-panel .instr{ font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:4px; }
+  .rehab-goal-row{ display:flex; align-items:center; gap:8px; margin-top:8px; font-size:12.5px; color:var(--text-secondary); }
+  .rehab-goal-row input{ width:60px; padding:5px 7px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-primary); font-family:inherit; font-size:13px; }
+  .rehab-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;}
+  .rehab-control{padding:8px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text-primary);font:12px Inter,sans-serif;}
+  .rehab-control label{display:block;color:var(--text-muted);font-size:10px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;}
+  .rehab-control select,.rehab-control input{width:100%;border:0;background:transparent;color:inherit;font:inherit;outline:none;}
+  .program-editor{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+  .program-editor-title{font:600 13px 'Space Grotesk',sans-serif;margin-bottom:8px;}
+  .program-editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+  .program-editor button{margin-top:8px;width:100%;}
+  .hold-status{font-size:12px;color:var(--sky);margin-top:7px;}
+ .voice-control{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 12px;padding:9px 11px;border:1px solid var(--border);border-radius:10px;background:var(--surface-1);font-size:12px;color:var(--text-secondary);}
+  .voice-toggle{border:1px solid var(--border);background:var(--surface-2);color:var(--text-primary);border-radius:18px;padding:6px 11px;font:600 11px 'Space Grotesk',sans-serif;cursor:pointer;}
+  .voice-toggle.on{border-color:var(--success);color:var(--success);}
+  .voice-note{font-size:10.5px;color:var(--text-muted);margin-top:2px;}
+
+
+  .rehab-result{ text-align:center; margin-top:4px; }
+  .rehab-result .val{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:28px; color:var(--sky); }
+  .rehab-result .delta{ font-size:13px; margin-top:2px; }
+  .rehab-result .delta.up{ color:var(--success); }
+  .rehab-result .delta.down{ color:var(--text-secondary); }
+  .rehab-chart-wrap{ margin-top:14px; }
+  .rehab-chart-label{ font-size:11px; color:var(--text-muted); margin-bottom:4px; }
+
+  .program-panel{ border-radius:12px; padding:14px 16px; margin-bottom:12px; background:linear-gradient(160deg, rgba(95,168,211,0.14), rgba(95,168,211,0.04)); border:1px solid rgba(95,168,211,0.3); }
+  .program-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+  .program-name{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14.5px; }
+  .program-sub{ font-size:11.5px; color:var(--text-secondary); margin-top:1px; }
+  .streak-chip{ display:flex; align-items:center; gap:4px; background:rgba(17,26,27,0.5); border-radius:20px; padding:4px 10px; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px; color:var(--sky); white-space:nowrap; }
+  .week-row{ display:flex; gap:5px; margin-bottom:12px; }
+  .week-day{ flex:1; text-align:center; }
+  .week-day .lbl{ font-size:10px; color:var(--text-muted); margin-bottom:4px; }
+  .week-dot{ width:100%; aspect-ratio:1/1; border-radius:8px; background:var(--surface-2); border:1px solid var(--border); }
+  .week-dot.done{ background:var(--sky); border-color:var(--sky); }
+  .week-dot.today{ box-shadow:0 0 0 2px rgba(95,168,211,0.5); }
+  .prescribed-row{ margin-bottom:8px; }
+  .prescribed-row:last-child{ margin-bottom:0; }
+  .prescribed-top{ display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:3px; }
+  .prescribed-top .pname{ color:var(--text-primary); font-weight:500; }
+  .prescribed-top .pcount{ color:var(--text-secondary); }
+  .prescribed-bar-track{ height:6px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
+  .prescribed-bar-fill{ height:100%; background:var(--sky); }
+  .prescribed-bar-fill.complete{ background:var(--success); }
+
+  footer{ text-align:center; font-size:11px; color:var(--text-muted); margin-top:18px; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <h1>Form Coach</h1>
+  <p class="tagline">Real-time posture and movement checks, right in your browser.</p>
+
+  <div class="mode-toggle">
+    <button class="mode-btn yoga active" data-mode="yoga">Yoga</button>
+    <button class="mode-btn gym" data-mode="gym">Gym</button>
+    <button class="mode-btn dance" data-mode="dance">Dance</button>
+    <button class="mode-btn rehab" data-mode="rehab">Rehab</button>
+  </div>
+
+  <div class="program-panel" id="program-panel" style="display:none;">
+    <div class="program-top">
+      <div>
+        <div class="program-name" id="program-name"></div>
+        <div class="program-sub" id="program-sub"></div>
+      </div>
+      <div class="streak-chip" id="streak-chip">🔥 0 day streak</div>
+    </div>
+    <div class="week-row" id="week-row"></div>
+    <div id="prescribed-list"></div>
+    <div class="program-editor">
+      <div class="program-editor-title">Program builder (prototype)</div>
+      <div class="program-editor-grid">
+        <div class="rehab-control"><label>Exercise</label><select id="program-exercise"></select></div>
+        <div class="rehab-control"><label>Days / week</label><input id="program-days" type="number" min="1" max="7" value="3"></div>
+        <div class="rehab-control"><label>Sets</label><input id="program-sets" type="number" min="1" max="20" value="1"></div>
+        <div class="rehab-control"><label>Reps</label><input id="program-reps" type="number" min="0" max="100" value="10"></div>
+        <div class="rehab-control"><label>Hold seconds</label><input id="program-hold" type="number" min="0" max="300" value="0"></div>
+        <div class="rehab-control"><label>Goal</label><input id="program-goal" type="number" min="0" step="1" placeholder="Optional"></div>
+      </div>
+      <button class="start-btn" id="program-save-btn">Save to sample program</button>
+    </div>
+  </div>
+
+  <div class="exercise-row" id="exercise-row"></div>
+
+  <div class="voice-control">
+    <div><strong>Voice coaching</strong><div class="voice-note">Hear corrections and movement prompts while you exercise.</div></div>
+    <button class="voice-toggle on" id="voice-toggle" aria-pressed="true">🔊 Voice ON</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="mirror">
+      <video id="video" playsinline autoplay muted></video>
+      <canvas class="overlay" id="canvas"></canvas>
+    </div>
+    <div class="badge" id="badge" style="display:none;"><span class="lbl" id="badge-lbl">reps</span><span id="badge-val">0</span></div>
+    <div class="dance-hud" id="dance-hud" style="display:none;">
+      <div class="move-name" id="move-name">Get ready</div>
+      <div class="move-bar-track"><div class="move-bar-fill" id="move-bar"></div></div>
+    </div>
+    <div class="rehab-hud" id="rehab-hud" style="display:none;">
+      <div class="rehab-value"><span id="rehab-live-val">0</span><span class="goal" id="rehab-live-goal"></span></div>
+      <div class="rehab-timer-track"><div class="rehab-timer-fill" id="rehab-timer-bar"></div></div>
+    </div>
+    <div class="coach-measure" id="coach-measure"><strong id="coach-angle">—</strong> <span id="coach-angle-label"></span></div>
+    <div class="form-legend" id="form-legend">
+      <span class="legend-chip"><span class="legend-dot good"></span>Good</span>
+      <span class="legend-chip"><span class="legend-dot warn"></span>Uncertain</span>
+      <span class="legend-chip"><span class="legend-dot bad"></span>Adjust</span>
+    </div>
+    <div class="stage-overlay" id="stage-overlay">
+      <p>This app uses your webcam locally in your browser. Nothing is uploaded anywhere. Stand back so your full body is visible.</p>
+      <button class="start-btn" id="start-btn">Turn on camera</button>
+    </div>
+  </div>
+
+  <div class="feedback-card idle" id="feedback-card">
+    <div class="feedback-status" id="feedback-status">Waiting for camera</div>
+    <div id="feedback-sub" style="font-size:12.5px;color:var(--text-muted);">Pick a pose above once the camera starts.</div>
+  </div>
+
+  <div class="rehab-panel" id="rehab-panel" style="display:none;">
+    <div class="instr" id="rehab-instr"></div>
+    <div class="rehab-controls">
+      <div class="rehab-control"><label>Affected side</label><select id="rehab-side"><option value="left">Left</option><option value="right">Right</option></select></div>
+      <div class="rehab-control"><label>Session target</label><input id="rehab-target" type="number" min="0" step="1" placeholder="Optional"></div>
+    </div>
+    <div class="hold-status" id="rehab-hold-status"></div>
+    <button class="start-btn rehab-start" id="rehab-start-btn">Start session</button>
+    <div id="rehab-result-slot"></div>
+    <div class="rehab-chart-wrap" id="rehab-chart-wrap" style="display:none;">
+      <div class="rehab-chart-label" id="rehab-chart-label">Session history</div>
+      <canvas id="rehab-chart" width="400" height="120" style="width:100%;height:120px;"></canvas>
+    </div>
+  </div>
+
+  <footer>Pose detection runs on-device with MediaPipe. Single-camera tracking has real limits — treat feedback as a guide, not a substitute for a qualified trainer or physio. Rehab tracking is for general awareness only: always follow your prescribed program and stop if you feel pain.</footer>
+</div>
+
+<script type="module">
+import { PoseLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+/* ---------- landmark indices ---------- */
+const L = {
+  lShoulder:11, rShoulder:12, lElbow:13, rElbow:14, lWrist:15, rWrist:16,
+  lHip:23, rHip:24, lKnee:25, rKnee:26, lAnkle:27, rAnkle:28,
+  lHeel:29, rHeel:30, lFoot:31, rFoot:32
+};
+
+function angle(a,b,c){
+  const ab = {x:a.x-b.x, y:a.y-b.y};
+  const cb = {x:c.x-b.x, y:c.y-b.y};
+  const dot = ab.x*cb.x + ab.y*cb.y;
+  const magAb = Math.hypot(ab.x,ab.y), magCb = Math.hypot(cb.x,cb.y);
+  if(magAb===0 || magCb===0) return 0;
+  let cos = dot/(magAb*magCb);
+  cos = Math.max(-1,Math.min(1,cos));
+  return Math.acos(cos) * 180/Math.PI;
+}
+function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+/* ---------- exercise/pose/dance/rehab definitions ---------- */
+const LIBRARY = {
+  yoga: [
+    {
+      id:"mountain", name:"Mountain pose", type:"hold",
+      checks:[
+        {name:"left leg straight", pts:[L.lHip,L.lKnee,L.lAnkle], range:[165,182], cue:"Straighten your left leg fully.", joint:L.lKnee},
+        {name:"right leg straight", pts:[L.rHip,L.rKnee,L.rAnkle], range:[165,182], cue:"Straighten your right leg fully.", joint:L.rKnee},
+        {name:"spine tall", pts:[L.lShoulder,L.lHip,L.lKnee], range:[160,182], cue:"Stand tall — lengthen through your spine instead of leaning forward.", joint:L.lHip}
+      ]
+    },
+    {
+      id:"tree", name:"Tree pose", type:"hold",
+      checks:[
+        {name:"standing leg straight", pts:[L.lHip,L.lKnee,L.lAnkle], range:[165,182], cue:"Straighten your standing (left) leg — don't lock the knee, but keep it firm.", joint:L.lKnee},
+        {name:"lifted knee bent", pts:[L.rHip,L.rKnee,L.rAnkle], range:[10,95], cue:"Bend your right knee more and draw the foot up toward your inner thigh.", joint:L.rKnee},
+        {name:"hips level", type:"level", pts:[L.lHip,L.rHip], tol:0.06, cue:"Keep your hips level — avoid leaning to one side.", joint:L.lHip}
+      ]
+    },
+    {
+      id:"warrior2", name:"Warrior II", type:"hold",
+      checks:[
+        {name:"front knee bent", pts:[L.lHip,L.lKnee,L.lAnkle], range:[80,110], cue:"Bend your front (left) knee closer to a right angle.", joint:L.lKnee},
+        {name:"back leg straight", pts:[L.rHip,L.rKnee,L.rAnkle], range:[160,182], cue:"Straighten your back (right) leg.", joint:L.rKnee},
+        {name:"front arm extended", pts:[L.lShoulder,L.lElbow,L.lWrist], range:[155,182], cue:"Extend your front arm fully.", joint:L.lElbow},
+        {name:"back arm extended", pts:[L.rShoulder,L.rElbow,L.rWrist], range:[155,182], cue:"Extend your back arm fully — reach in both directions.", joint:L.rElbow}
+      ]
+    },
+    {
+      id:"chair", name:"Chair pose", type:"hold",
+      checks:[
+        {name:"left knee bent", pts:[L.lHip,L.lKnee,L.lAnkle], range:[95,150], cue:"Bend your knees more and sink your hips down, like sitting into a chair.", joint:L.lKnee},
+        {name:"right knee bent", pts:[L.rHip,L.rKnee,L.rAnkle], range:[95,150], cue:"Keep both knees evenly bent.", joint:L.rKnee},
+        {name:"arms reaching up", pts:[L.lHip,L.lShoulder,L.lElbow], range:[140,182], cue:"Reach your arms further overhead.", joint:L.lShoulder}
+      ]
+    },
+    {
+      id:"forward_fold", name:"Standing forward fold", type:"hold",
+      checks:[
+        {name:"hinge at hips", pts:[L.lShoulder,L.lHip,L.lKnee], range:[10,95], cue:"Hinge further forward from your hips, letting your upper body fold down.", joint:L.lHip},
+        {name:"knees soft, not locked", pts:[L.lHip,L.lKnee,L.lAnkle], range:[120,182], cue:"Keep a soft bend in your knees rather than locking them.", joint:L.lKnee}
+      ]
+    },
+    {
+      id:"triangle", name:"Triangle pose", type:"hold",
+      checks:[
+        {name:"front leg straight", pts:[L.lHip,L.lKnee,L.lAnkle], range:[160,182], cue:"Straighten your front (left) leg.", joint:L.lKnee},
+        {name:"back leg straight", pts:[L.rHip,L.rKnee,L.rAnkle], range:[160,182], cue:"Straighten your back (right) leg.", joint:L.rKnee},
+        {name:"top arm reaching up", type:"above", pts:[L.rWrist,L.rShoulder], cue:"Reach your top (right) arm straight up toward the ceiling.", joint:L.rWrist},
+        {name:"stance wide", type:"far", pts:[L.lAnkle,L.rAnkle], tol:0.28, cue:"Widen your stance further apart.", joint:L.lAnkle}
+      ]
+    },
+    {
+      id:"goddess", name:"Goddess pose", type:"hold",
+      checks:[
+        {name:"wide stance", type:"far", pts:[L.lAnkle,L.rAnkle], tol:0.28, cue:"Step your feet wider apart.", joint:L.lAnkle},
+        {name:"left knee bent", pts:[L.lHip,L.lKnee,L.lAnkle], range:[90,140], cue:"Bend your left knee out over your toes.", joint:L.lKnee},
+        {name:"right knee bent", pts:[L.rHip,L.rKnee,L.rAnkle], range:[90,140], cue:"Bend your right knee out over your toes.", joint:L.rKnee},
+        {name:"cactus arms", pts:[L.lShoulder,L.lElbow,L.lWrist], range:[70,115], cue:"Bend your elbows to about a right angle, arms out like a cactus.", joint:L.lElbow}
+      ]
+    },
+    {
+      id:"extended_mountain", name:"Extended mountain", type:"hold",
+      checks:[
+        {name:"left leg straight", pts:[L.lHip,L.lKnee,L.lAnkle], range:[165,182], cue:"Straighten your left leg fully.", joint:L.lKnee},
+        {name:"right leg straight", pts:[L.rHip,L.rKnee,L.rAnkle], range:[165,182], cue:"Straighten your right leg fully.", joint:L.rKnee},
+        {name:"left arm overhead", type:"above", pts:[L.lWrist,L.lShoulder], cue:"Reach your left arm fully overhead.", joint:L.lWrist},
+        {name:"right arm overhead", type:"above", pts:[L.rWrist,L.rShoulder], cue:"Reach your right arm fully overhead.", joint:L.rWrist}
+      ]
+    }
+  ],
+  gym: [
+    {
+      id:"squat", name:"Squat", type:"rep", repJoint:[L.lHip,L.lKnee,L.lAnkle], downBelow:110, upAbove:160,
+      checks:[
+        {name:"depth", pts:[L.lHip,L.lKnee,L.lAnkle], range:[70,180], range2:[70,110], onlyAtBottom:true, cue:"Sit your hips lower — aim for thighs closer to parallel with the ground.", joint:L.lKnee},
+        {name:"back angle", pts:[L.lShoulder,L.lHip,L.lKnee], range:[130,182], cue:"Keep your chest up — you're leaning too far forward.", joint:L.lHip}
+      ]
+    },
+    {
+      id:"lunge", name:"Lunge", type:"rep", repJoint:[L.lHip,L.lKnee,L.lAnkle], downBelow:110, upAbove:160,
+      checks:[
+        {name:"front knee angle", pts:[L.lHip,L.lKnee,L.lAnkle], range:[75,110], range2:[75,110], onlyAtBottom:true, cue:"Bend your front knee closer to a right angle at the bottom.", joint:L.lKnee},
+        {name:"torso upright", pts:[L.lShoulder,L.lHip,L.lKnee], range:[150,182], cue:"Keep your torso upright instead of leaning forward.", joint:L.lHip},
+        {name:"knee over ankle", type:"xoffset", a:L.lKnee, b:L.lAnkle, tol:0.09, onlyAtBottom:true, cue:"Your front knee is pushing past your toes — shift your weight back slightly.", joint:L.lKnee}
+      ]
+    },
+    {
+      id:"shoulder_raise", name:"Shoulder raise", type:"hold",
+      checks:[
+        {name:"left arm height", pts:[L.lHip,L.lShoulder,L.lElbow], range:[75,105], cue:"Raise your left arm to about shoulder height.", joint:L.lShoulder},
+        {name:"right arm height", pts:[L.rHip,L.rShoulder,L.rElbow], range:[75,105], cue:"Raise your right arm to about shoulder height.", joint:L.rShoulder},
+        {name:"left elbow straight", pts:[L.lShoulder,L.lElbow,L.lWrist], range:[150,182], cue:"Keep your left arm straighter, don't bend the elbow.", joint:L.lElbow},
+        {name:"right elbow straight", pts:[L.rShoulder,L.rElbow,L.rWrist], range:[150,182], cue:"Keep your right arm straighter, don't bend the elbow.", joint:L.rElbow}
+      ]
+    },
+    {
+      id:"bicep_curl", name:"Bicep curl", type:"rep", repJoint:[L.lShoulder,L.lElbow,L.lWrist], downBelow:70, upAbove:155,
+      checks:[
+        {name:"elbow stays still", pts:[L.lHip,L.lShoulder,L.lElbow], range:[0,35], cue:"Keep your elbow pinned by your side instead of swinging it forward.", joint:L.lShoulder}
+      ]
+    },
+    {
+      id:"overhead_press", name:"Overhead press", type:"rep", repJoint:[L.lShoulder,L.lElbow,L.lWrist], downBelow:110, upAbove:160,
+      checks:[
+        {name:"torso upright", pts:[L.lShoulder,L.lHip,L.lKnee], range:[155,182], cue:"Keep your torso upright — avoid leaning back to press the weight up.", joint:L.lHip}
+      ]
+    },
+    {
+      id:"calf_raise", name:"Calf raise", type:"rep", repJoint:[L.lFoot,L.lAnkle,L.lKnee], downBelow:70, upAbove:100,
+      checks:[
+        {name:"legs straight", pts:[L.lHip,L.lKnee,L.lAnkle], range:[160,182], cue:"Keep your legs straight as you rise onto your toes.", joint:L.lKnee}
+      ]
+    },
+    {
+      id:"march", name:"Marching in place", type:"rep", repJoint:[L.lShoulder,L.lHip,L.lKnee], downBelow:120, upAbove:165,
+      checks:[
+        {name:"posture upright", pts:[L.rShoulder,L.rHip,L.rKnee], range:[150,182], cue:"Stay tall through your torso instead of leaning forward.", joint:L.rHip}
+      ]
+    }
+  ],
+  dance: [
+    {
+      id:"warmup_groove", name:"Warm-up groove",
+      sequence:[
+        {name:"Arms up", duration:2200, checks:[
+          {type:"above", pts:[L.lWrist,L.lShoulder], joint:L.lWrist},
+          {type:"above", pts:[L.rWrist,L.rShoulder], joint:L.rWrist}
+        ]},
+        {name:"Arms out wide", duration:2200, checks:[
+          {pts:[L.lShoulder,L.lElbow,L.lWrist], range:[150,182], joint:L.lElbow},
+          {pts:[L.rShoulder,L.rElbow,L.rWrist], range:[150,182], joint:L.rElbow},
+          {pts:[L.lHip,L.lShoulder,L.lElbow], range:[70,110], joint:L.lShoulder},
+          {pts:[L.rHip,L.rShoulder,L.rElbow], range:[70,110], joint:L.rShoulder}
+        ]},
+        {name:"Hands on hips", duration:2200, checks:[
+          {type:"near", pts:[L.lWrist,L.lHip], tol:0.13, joint:L.lWrist},
+          {type:"near", pts:[L.rWrist,L.rHip], tol:0.13, joint:L.rWrist}
+        ]},
+        {name:"Reach up right", duration:2000, checks:[
+          {type:"above", pts:[L.rWrist,L.rShoulder], joint:L.rWrist},
+          {type:"below", pts:[L.lWrist,L.lShoulder], joint:L.lWrist}
+        ]},
+        {name:"Squat pulse", duration:2000, checks:[
+          {pts:[L.lHip,L.lKnee,L.lAnkle], range:[95,145], joint:L.lKnee}
+        ]}
+      ]
+    },
+    {
+      id:"side_groove", name:"Side-step groove",
+      sequence:[
+        {name:"Reach up left", duration:2000, checks:[
+          {type:"above", pts:[L.lWrist,L.lShoulder], joint:L.lWrist},
+          {type:"below", pts:[L.rWrist,L.rShoulder], joint:L.rWrist}
+        ]},
+        {name:"Reach up right", duration:2000, checks:[
+          {type:"above", pts:[L.rWrist,L.rShoulder], joint:L.rWrist},
+          {type:"below", pts:[L.lWrist,L.lShoulder], joint:L.lWrist}
+        ]},
+        {name:"Clap in front", duration:1800, checks:[
+          {type:"near", pts:[L.lWrist,L.rWrist], tol:0.12, joint:L.lWrist}
+        ]},
+        {name:"Arms out wide", duration:2200, checks:[
+          {pts:[L.lHip,L.lShoulder,L.lElbow], range:[65,115], joint:L.lShoulder},
+          {pts:[L.rHip,L.rShoulder,L.rElbow], range:[65,115], joint:L.rShoulder}
+        ]},
+        {name:"Big squat clap", duration:2200, checks:[
+          {pts:[L.lHip,L.lKnee,L.lAnkle], range:[95,145], joint:L.lKnee},
+          {type:"near", pts:[L.lWrist,L.rWrist], tol:0.14, joint:L.lWrist}
+        ]}
+      ]
+    },
+    {
+      id:"arm_wave", name:"Arm wave flow",
+      sequence:[
+        {name:"Arms up", duration:2000, checks:[
+          {type:"above", pts:[L.lWrist,L.lShoulder], joint:L.lWrist},
+          {type:"above", pts:[L.rWrist,L.rShoulder], joint:L.rWrist}
+        ]},
+        {name:"Cross arms", duration:2000, checks:[
+          {type:"near", pts:[L.lWrist,L.rShoulder], tol:0.16, joint:L.lWrist},
+          {type:"near", pts:[L.rWrist,L.lShoulder], tol:0.16, joint:L.rWrist}
+        ]},
+        {name:"Reach up right", duration:1900, checks:[
+          {type:"above", pts:[L.rWrist,L.rShoulder], joint:L.rWrist},
+          {type:"below", pts:[L.lWrist,L.lShoulder], joint:L.lWrist}
+        ]},
+        {name:"Reach up left", duration:1900, checks:[
+          {type:"above", pts:[L.lWrist,L.lShoulder], joint:L.lWrist},
+          {type:"below", pts:[L.rWrist,L.rShoulder], joint:L.rWrist}
+        ]},
+        {name:"Arms out wide", duration:2200, checks:[
+          {pts:[L.lShoulder,L.lElbow,L.lWrist], range:[150,182], joint:L.lElbow},
+          {pts:[L.rShoulder,L.rElbow,L.rWrist], range:[150,182], joint:L.rElbow}
+        ]}
+      ]
+    },
+    {
+      id:"cardio_pulse", name:"Cardio pulse",
+      sequence:[
+        {name:"Jumping jack open", duration:1800, checks:[
+          {type:"above", pts:[L.lWrist,L.lShoulder], joint:L.lWrist},
+          {type:"above", pts:[L.rWrist,L.rShoulder], joint:L.rWrist},
+          {type:"far", pts:[L.lAnkle,L.rAnkle], tol:0.22, joint:L.lAnkle}
+        ]},
+        {name:"Feet together reach", duration:1800, checks:[
+          {type:"below", pts:[L.lWrist,L.lShoulder], joint:L.lWrist},
+          {type:"near", pts:[L.lAnkle,L.rAnkle], tol:0.14, joint:L.lAnkle}
+        ]},
+        {name:"Knee raise right", duration:1800, checks:[
+          {pts:[L.rShoulder,L.rHip,L.rKnee], range:[40,115], joint:L.rKnee}
+        ]},
+        {name:"Knee raise left", duration:1800, checks:[
+          {pts:[L.lShoulder,L.lHip,L.lKnee], range:[40,115], joint:L.lKnee}
+        ]},
+        {name:"Squat pulse", duration:2000, checks:[
+          {pts:[L.lHip,L.lKnee,L.lAnkle], range:[95,145], joint:L.lKnee}
+        ]}
+      ]
+    }
+  ],
+  rehab: [
+    {
+      id:"knee_flexion", name:"Knee flexion (heel slide)", type:"rom", unit:"°", goalDefault:120, duration:20000,
+      joint:L.lKnee,
+      compute:(lm)=> 180 - angle(lm[L.lHip], lm[L.lKnee], lm[L.lAnkle]),
+      instr:"Sit or lie down and slowly slide your heel back, bending your knee as far as comfortable, then straighten. Repeat through the session — we'll record your best bend."
+    },
+    {
+      id:"shoulder_rom", name:"Shoulder raise", type:"rom", unit:"°", goalDefault:150, duration:20000,
+      joint:L.lShoulder,
+      compute:(lm)=> angle(lm[L.lHip], lm[L.lShoulder], lm[L.lElbow]),
+      instr:"Face the camera for a side raise, or turn side-on for a forward raise. Slowly raise your left arm as high as comfortable, then lower. We'll record your best height reached."
+    },
+    {
+      id:"sit_to_stand", name:"30s sit-to-stand", type:"rep", unit:"reps", duration:30000, startState:"down",
+      repJoint:[L.lHip,L.lKnee,L.lAnkle], downBelow:120, upAbove:160, joint:L.lKnee,
+      instr:"Sit in a chair with feet flat on the floor. Stand up fully, then sit back down — repeat as many times as you comfortably can in 30 seconds. This is a timed movement exercise inspired by common sit-to-stand assessments; it is not a clinical assessment."
+    },
+    {
+      id:"ankle_pumps", name:"Ankle pumps", type:"rom", unit:"°", goalDefault:100, duration:20000,
+      joint:L.lFoot,
+      compute:(lm)=> angle(lm[L.lFoot], lm[L.lAnkle], lm[L.lKnee]),
+      instr:"Sit with your leg extended so your foot is visible to the camera from the side. Slowly point your toes down, then pull them up toward your shin. We'll record your best range."
+    },
+    {
+      id:"hip_abduction", name:"Hip abduction (standing)", type:"rom", unit:"°", goalDefault:30, duration:20000,
+      joint:L.lAnkle,
+      compute:(lm)=> Math.abs(90 - angle(lm[L.rHip], lm[L.lHip], lm[L.lAnkle])),
+      instr:"Stand side-on to the camera, holding onto something steady if needed. Slowly lift your left leg out to the side, then lower it. We'll record an estimated movement range."
+    },
+    {
+      id:"seated_knee_extension", name:"Seated knee extension", type:"rom", unit:"°", goalDefault:160, duration:20000,
+      joint:L.lKnee,
+      compute:(lm)=> angle(lm[L.lHip], lm[L.lKnee], lm[L.lAnkle]),
+      instr:"Sit upright on a stable chair. Slowly straighten your left knee as far as comfortable, pause briefly, then lower your foot. Keep your thigh supported and your movement controlled."
+    },
+    {
+      id:"elbow_flexion", name:"Elbow bend and straighten", type:"rom", unit:"°", goalDefault:130, duration:20000,
+      joint:L.lElbow,
+      compute:(lm)=> 180 - angle(lm[L.lShoulder], lm[L.lElbow], lm[L.lWrist]),
+      instr:"Keep your upper arm close to your side. Slowly bend your left elbow, then straighten it comfortably. Face side-on so your shoulder, elbow and wrist remain visible."
+    },
+    {
+      id:"straight_leg_raise", name:"Standing hip flexion (leg raise)", type:"rom", unit:"°", goalDefault:45, duration:20000,
+      joint:L.lHip,
+      compute:(lm)=> 180 - angle(lm[L.lShoulder], lm[L.lHip], lm[L.lKnee]),
+      instr:"Stand side-on beside a sturdy support. Keeping your trunk upright, slowly move your left leg forward a comfortable distance and return. Use support for balance; stop if you feel pain or dizziness."
+    }
+    ,{
+      id:"lying_straight_leg_raise", name:"Lying straight leg raise", type:"rep", unit:"reps", duration:30000, startState:"up",
+      repJoint:[L.lShoulder,L.lHip,L.lKnee], downBelow:145, upAbove:165, joint:L.lHip,
+      instr:"Lie on a stable surface with your whole body visible from the side. Keep the left knee straight, gently lift the leg a comfortable distance, then lower slowly. Floor-position tracking is experimental, so follow your physiotherapist's instructions."
+    },
+    {
+      id:"wall_push_up", name:"Wall push-up", type:"rep", unit:"reps", duration:30000, startState:"up",
+      repJoint:[L.lShoulder,L.lElbow,L.lWrist], downBelow:105, upAbove:155, joint:L.lElbow,
+      instr:"Stand facing a wall with hands around chest height and feet stable. Bend your elbows to move toward the wall, then push back comfortably. Use a side-on camera view so your shoulder, elbow and wrist are visible."
+    },
+    {
+      id:"wall_sit_hold", name:"Wall sit hold", type:"hold", unit:"sec", duration:30000, startState:"hold",
+      holdRange:[60,120], holdJoint:[L.lHip,L.lKnee,L.lAnkle], joint:L.lKnee,
+      instr:"Lean your back against a stable wall and lower into a comfortable supported squat. Hold only within the range recommended by your physiotherapist. Stop if you feel pain or dizziness."
+    }
+  ]
+};
+
+const DEFAULT_PROGRAM = {
+  name: "Sample recovery program",
+  sub: "Prototype tracking plan — use your clinician's actual prescription when applicable.",
+  prescriptions: [
+    { exerciseId: "knee_flexion", timesPerWeek: 5, sets:1, reps:10, holdSeconds:0, goal:120 },
+    { exerciseId: "sit_to_stand", timesPerWeek: 3, sets:1, reps:10, holdSeconds:0, goal:10 }
+  ]
+};
+let PROGRAM = loadProgram();
+function loadProgram(){ try{ const raw=localStorage.getItem('formcoach_rehab_program'); return raw ? JSON.parse(raw) : DEFAULT_PROGRAM; }catch(e){ return DEFAULT_PROGRAM; } }
+function saveProgram(){ try{ localStorage.setItem('formcoach_rehab_program', JSON.stringify(PROGRAM)); }catch(e){} }
+
+/* ---------- state ---------- */
+let mode = "yoga";
+let currentExercise = LIBRARY.yoga[0];
+let currentRoutine = LIBRARY.dance[0];
+let currentRehab = LIBRARY.rehab[0];
+let rehabGoal = currentRehab.goalDefault || null;
+
+let landmarker = null;
+let running = false;
+let repState = "up";
+let repCount = 0;
+let holdSeconds = 0;
+let lastFrameTime = 0;
+let lastLandmarks = null;
+let smoothedLandmarks = null;
+let repFrames = 0;
+let repBadFrames = 0;
+let repDepthReached = false;
+let lastGoodRepQuality = null;
+let lastCoachCheck = null;
+
+let danceRunning = false;
+let danceMoveIndex = 0;
+let moveStartTs = 0;
+let danceScore = 0;
+let danceCombo = 1;
+let danceHits = 0;
+let danceBest = 0;
+let danceSampleFrames = 0;
+let dancePassedFrames = 0;
+try{ danceBest = parseInt(localStorage.getItem('formcoach_dance_best')||'0',10) || 0; }catch(e){}
+
+let rehabRunning = false;
+let rehabStartTs = 0;
+let rehabSessionBest = 0;
+let rehabRepState = "up";
+let rehabRepCount = 0;
+let rehabHoldSeconds = 0;
+let rehabBestHold = 0;
+let rehabLastTick = 0;
+let rehabSide = "left";
+let voiceEnabled = true;
+let lastSpokenKey = '';
+let lastSpokenAt = 0;
+let lastDanceSpokenMove = -1;
+
+
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const stage = document.getElementById('stage');
+const exerciseRow = document.getElementById('exercise-row');
+const feedbackCard = document.getElementById('feedback-card');
+const feedbackStatus = document.getElementById('feedback-status');
+const feedbackSub = document.getElementById('feedback-sub');
+const voiceToggle = document.getElementById('voice-toggle');
+const badge = document.getElementById('badge');
+const badgeLbl = document.getElementById('badge-lbl');
+const badgeVal = document.getElementById('badge-val');
+const danceHud = document.getElementById('dance-hud');
+const moveNameEl = document.getElementById('move-name');
+const moveBarEl = document.getElementById('move-bar');
+const rehabHud = document.getElementById('rehab-hud');
+const rehabLiveVal = document.getElementById('rehab-live-val');
+const rehabLiveGoal = document.getElementById('rehab-live-goal');
+const rehabTimerBar = document.getElementById('rehab-timer-bar');
+const rehabPanel = document.getElementById('rehab-panel');
+const rehabInstr = document.getElementById('rehab-instr');
+const rehabGoalRow = document.getElementById('rehab-goal-row');
+const rehabStartBtn = document.getElementById('rehab-start-btn');
+const rehabSideEl = document.getElementById('rehab-side');
+const rehabTargetEl = document.getElementById('rehab-target');
+const rehabHoldStatus = document.getElementById('rehab-hold-status');
+const programExerciseEl = document.getElementById('program-exercise');
+const programDaysEl = document.getElementById('program-days');
+const programSetsEl = document.getElementById('program-sets');
+const programRepsEl = document.getElementById('program-reps');
+const programHoldEl = document.getElementById('program-hold');
+const programGoalEl = document.getElementById('program-goal');
+const programSaveBtn = document.getElementById('program-save-btn');
+const rehabResultSlot = document.getElementById('rehab-result-slot');
+const rehabChartWrap = document.getElementById('rehab-chart-wrap');
+const rehabChartLabel = document.getElementById('rehab-chart-label');
+const rehabChart = document.getElementById('rehab-chart');
+const programPanel = document.getElementById('program-panel');
+const programNameEl = document.getElementById('program-name');
+const programSubEl = document.getElementById('program-sub');
+const streakChipEl = document.getElementById('streak-chip');
+const weekRowEl = document.getElementById('week-row');
+const prescribedListEl = document.getElementById('prescribed-list');
+const stageOverlay = document.getElementById('stage-overlay');
+const startBtn = document.getElementById('start-btn');
+const appEl = document.getElementById('app');
+const coachMeasure = document.getElementById('coach-measure');
+const coachAngle = document.getElementById('coach-angle');
+const coachAngleLabel = document.getElementById('coach-angle-label');
+
+function renderExerciseChips(){
+  if(mode === "dance"){
+    exerciseRow.innerHTML = LIBRARY.dance.map(r =>
+      `<button class="ex-chip ${r.id===currentRoutine.id?'active':''}" data-id="${r.id}">${r.name}</button>`
+    ).join('');
+    exerciseRow.querySelectorAll('.ex-chip').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        currentRoutine = LIBRARY.dance.find(r=>r.id===btn.getAttribute('data-id'));
+        renderExerciseChips();
+        resetDanceUI();
+      });
+    });
+  } else if(mode === "rehab"){
+    exerciseRow.innerHTML = LIBRARY.rehab.map(r =>
+      `<button class="ex-chip ${r.id===currentRehab.id?'active':''}" data-id="${r.id}">${r.name}</button>`
+    ).join('');
+    exerciseRow.querySelectorAll('.ex-chip').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        currentRehab = LIBRARY.rehab.find(r=>r.id===btn.getAttribute('data-id'));
+        rehabGoal = currentRehab.goalDefault || null;
+        renderExerciseChips();
+        resetRehabUI();
+      });
+    });
+  } else {
+    exerciseRow.innerHTML = LIBRARY[mode].map(ex =>
+      `<button class="ex-chip ${ex.id===currentExercise.id?'active':''}" data-id="${ex.id}">${ex.name}</button>`
+    ).join('');
+    exerciseRow.querySelectorAll('.ex-chip').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        currentExercise = LIBRARY[mode].find(e=>e.id===btn.getAttribute('data-id'));
+        repCount = 0; repState = "up"; holdSeconds = 0;
+        resetMovementQuality();
+        renderExerciseChips();
+        setupBadge();
+      });
+    });
+  }
+}
+
+function setupBadge(){
+  danceHud.style.display = 'none';
+  rehabHud.style.display = 'none';
+  if(mode === "dance" || mode === "rehab"){ badge.style.display = 'none'; return; }
+  if(currentExercise.type === "rep"){
+    badge.style.display = 'block';
+    badgeLbl.textContent = 'reps';
+    badgeVal.textContent = repCount;
+  } else {
+    badge.style.display = 'block';
+    badgeLbl.textContent = 'hold (s)';
+    badgeVal.textContent = Math.floor(holdSeconds);
+  }
+}
+
+function resetDanceUI(){
+  danceRunning = false;
+  danceMoveIndex = 0;
+  danceScore = 0;
+  danceCombo = 1;
+  danceHits = 0;
+  badge.style.display = 'none';
+  danceHud.style.display = 'none';
+  if(running){
+    feedbackCard.className = "feedback-card idle";
+    feedbackStatus.className = "feedback-status";
+    feedbackStatus.textContent = currentRoutine.name;
+    feedbackSub.innerHTML = `Best score: <strong>${danceBest}</strong>. Press start below to begin the routine.`;
+    const old = document.getElementById('dance-start-btn');
+    if(old) old.remove();
+    const b = document.createElement('button');
+    b.id = 'dance-start-btn';
+    b.className = 'start-btn dance-start';
+    b.style.marginTop = '10px';
+    b.textContent = 'Start routine';
+    b.addEventListener('click', startDanceRoutine);
+    feedbackCard.appendChild(b);
+  }
+}
+
+/* ---------- rehab history helpers ---------- */
+function rehabHistoryKey(id){ return 'formcoach_rehab_' + id; }
+function loadRehabHistory(id){
+  try{
+    const raw = localStorage.getItem(rehabHistoryKey(id));
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function saveRehabHistory(id, arr){
+  try{ localStorage.setItem(rehabHistoryKey(id), JSON.stringify(arr.slice(-8))); }catch(e){}
+}
+
+function todayISO(d){
+  d = d || new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function loadAllLog(){
+  try{
+    const raw = localStorage.getItem('formcoach_rehab_alllog');
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function logSession(exerciseId){
+  const log = loadAllLog();
+  log.push({date: todayISO(), exerciseId});
+  try{ localStorage.setItem('formcoach_rehab_alllog', JSON.stringify(log.slice(-200))); }catch(e){}
+}
+function getWeekDates(){
+  const now = new Date();
+  const dow = now.getDay() === 0 ? 7 : now.getDay(); // Mon=1..Sun=7
+  const dates = [];
+  for(let i=1;i<=7;i++){
+    const d = new Date(now);
+    d.setDate(now.getDate() - (dow - i));
+    dates.push(d);
+  }
+  return dates;
+}
+function computeStreak(log){
+  const daysWithSession = new Set(log.map(l=>l.date));
+  let streak = 0;
+  let cursor = new Date();
+  while(daysWithSession.has(todayISO(cursor))){
+    streak += 1;
+    cursor.setDate(cursor.getDate()-1);
+  }
+  return streak;
+}
+
+function renderProgramPanel(){
+  if(mode !== 'rehab'){ programPanel.style.display = 'none'; return; }
+  programPanel.style.display = 'block';
+  programNameEl.textContent = PROGRAM.name;
+  programSubEl.textContent = PROGRAM.sub;
+
+  const log = loadAllLog();
+  const streak = computeStreak(log);
+  streakChipEl.textContent = `🔥 ${streak} day streak`;
+
+  const weekDates = getWeekDates();
+  const todayStr = todayISO();
+  const dayLabels = ['M','T','W','T','F','S','S'];
+  weekRowEl.innerHTML = weekDates.map((d,i)=>{
+    const iso = todayISO(d);
+    const done = log.some(l=>l.date===iso);
+    const isToday = iso === todayStr;
+    return `<div class="week-day"><div class="lbl">${dayLabels[i]}</div><div class="week-dot ${done?'done':''} ${isToday?'today':''}"></div></div>`;
+  }).join('');
+
+  const weekIsoSet = new Set(weekDates.map(d=>todayISO(d)));
+  programExerciseEl.innerHTML = LIBRARY.rehab.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  if(PROGRAM.prescriptions[0]) programExerciseEl.value = PROGRAM.prescriptions[0].exerciseId;
+  prescribedListEl.innerHTML = PROGRAM.prescriptions.map(p=>{
+    const ex = LIBRARY.rehab.find(e=>e.id===p.exerciseId);
+    const doneCount = log.filter(l=>l.exerciseId===p.exerciseId && weekIsoSet.has(l.date)).length;
+    const pct = Math.min(100, (doneCount/p.timesPerWeek)*100);
+    const complete = doneCount >= p.timesPerWeek;
+    return `<div class="prescribed-row">
+        <div class="prescribed-top"><span class="pname">${ex.name}</span><span class="pcount">${doneCount}/${p.timesPerWeek} this week</span></div>
+        <div class="prescribed-bar-track"><div class="prescribed-bar-fill ${complete?'complete':''}" style="width:${pct}%;"></div></div>
+      </div>`;
+  }).join('');
+}
+
+function drawRehabChart(history, goal){
+  const dctx = rehabChart.getContext('2d');
+  const W = rehabChart.width, H = rehabChart.height;
+  dctx.clearRect(0,0,W,H);
+  if(history.length === 0) return;
+  const values = history.map(h=>h.value);
+  const maxVal = Math.max(goal||0, ...values) * 1.15 || 1;
+  const padL = 8, padR = 8, padTop = 10, padBottom = 20;
+  const chartH = H - padTop - padBottom;
+  const barGap = 10;
+  const barW = (W - padL - padR - barGap*(history.length-1)) / history.length;
+
+  if(goal){
+    const gy = padTop + chartH - (goal/maxVal)*chartH;
+    dctx.strokeStyle = "rgba(95,168,211,0.6)";
+    dctx.setLineDash([4,3]);
+    dctx.beginPath();
+    dctx.moveTo(padL, gy);
+    dctx.lineTo(W-padR, gy);
+    dctx.stroke();
+    dctx.setLineDash([]);
+  }
+
+  history.forEach((h,i)=>{
+    const x = padL + i*(barW+barGap);
+    const barH = (h.value/maxVal)*chartH;
+    const y = padTop + chartH - barH;
+    const isLast = i === history.length-1;
+    dctx.fillStyle = isLast ? "#5FA8D3" : "rgba(159,179,175,0.35)";
+    dctx.beginPath();
+    dctx.roundRect ? dctx.roundRect(x,y,barW,barH,3) : dctx.rect(x,y,barW,barH);
+    dctx.fill();
+    dctx.fillStyle = "#9FB3AF";
+    dctx.font = "10px Inter, sans-serif";
+    dctx.textAlign = "center";
+    dctx.fillText(Math.round(h.value), x+barW/2, y-4);
+    dctx.fillText(h.date.slice(0,5), x+barW/2, H-6);
+  });
+}
+
+function resetRehabUI(){
+  rehabRunning = false;
+  rehabSessionBest = 0;
+  rehabRepCount = 0;
+  rehabRepState = currentRehab.startState || "up";
+  rehabHoldSeconds = 0; rehabBestHold = 0; rehabLastTick = performance.now();
+  rehabHud.style.display = 'none';
+  rehabPanel.style.display = mode === 'rehab' ? 'block' : 'none';
+  feedbackCard.style.display = mode === 'rehab' ? 'none' : 'block';
+  renderProgramPanel();
+  if(mode !== 'rehab') return;
+
+  rehabInstr.textContent = currentRehab.instr + " Stop if you feel pain, dizziness, or unusual symptoms. This is a movement-tracking prototype, not a diagnosis or personalized treatment plan; use exercises approved for you by a qualified physiotherapist.";
+  if(currentRehab.type === 'rom'){
+    rehabGoalRow.innerHTML = `Goal <input type="number" id="rehab-goal-input" value="${rehabGoal}"> ${currentRehab.unit}`;
+    document.getElementById('rehab-goal-input').addEventListener('input', (e)=>{ rehabGoal = parseFloat(e.target.value) || currentRehab.goalDefault; rehabTargetEl.value=rehabGoal; });
+  } else if(currentRehab.type === 'hold'){
+    rehabGoalRow.textContent = 'Hold target: use the duration set in your approved program; the app records your best continuous hold.';
+  } else {
+    rehabGoalRow.textContent = 'Rep target: use the repetitions set in your approved program; the app does not prescribe dosage.';
+  }
+  rehabStartBtn.textContent = 'Start session';
+  rehabSideEl.value = rehabSide;
+  rehabTargetEl.value = rehabGoal ?? '';
+  rehabHoldStatus.textContent = currentRehab.type==='hold' ? 'Hold tracking will measure your best continuous hold.' : '';
+  rehabStartBtn.style.display = running ? 'block' : 'none';
+  rehabResultSlot.innerHTML = '';
+
+  const history = loadRehabHistory(currentRehab.id);
+  if(history.length > 0){
+    rehabChartWrap.style.display = 'block';
+    rehabChartLabel.textContent = 'Session history';
+    drawRehabChart(history, currentRehab.type==='rom' ? rehabGoal : null);
+  } else {
+    rehabChartWrap.style.display = 'none';
+  }
+}
+
+rehabSideEl.addEventListener('change', ()=>{ rehabSide=rehabSideEl.value; resetRehabUI(); });
+rehabTargetEl.addEventListener('change', ()=>{ const v=parseFloat(rehabTargetEl.value); if(Number.isFinite(v)) rehabGoal=v; });
+programSaveBtn.addEventListener('click', ()=>{
+  const exerciseId=programExerciseEl.value;
+  const existing=PROGRAM.prescriptions.find(p=>p.exerciseId===exerciseId);
+  const item={exerciseId, timesPerWeek:Math.max(1,parseInt(programDaysEl.value)||1), sets:Math.max(1,parseInt(programSetsEl.value)||1), reps:Math.max(0,parseInt(programRepsEl.value)||0), holdSeconds:Math.max(0,parseInt(programHoldEl.value)||0), goal:parseFloat(programGoalEl.value)||undefined};
+  if(existing) Object.assign(existing,item); else PROGRAM.prescriptions.push(item);
+  saveProgram(); renderProgramPanel();
+});
+
+document.querySelectorAll('.mode-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    mode = btn.getAttribute('data-mode');
+    document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    appEl.classList.toggle('gym-mode', mode==='gym');
+    appEl.classList.toggle('dance-mode', mode==='dance');
+    appEl.classList.toggle('rehab-mode', mode==='rehab');
+    stage.classList.remove('hit','miss');
+    feedbackCard.style.display = 'block';
+    rehabPanel.style.display = 'none';
+    programPanel.style.display = 'none';
+    if(mode === 'gym' || mode === 'yoga'){
+      currentExercise = LIBRARY[mode][0];
+      repCount = 0; repState = "up"; holdSeconds = 0;
+      resetMovementQuality();
+      renderExerciseChips();
+      setupBadge();
+    } else if(mode === 'dance'){
+      renderExerciseChips();
+      resetDanceUI();
+    } else if(mode === 'rehab'){
+      renderExerciseChips();
+      resetRehabUI();
+    }
+  });
+});
+
+async function initLandmarker(){
+  const vision = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+  );
+  landmarker = await PoseLandmarker.createFromOptions(vision, {
+    baseOptions:{
+      modelAssetPath:"https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+      delegate:"GPU"
+    },
+    runningMode:"VIDEO",
+    numPoses:1
+  });
+}
+
+let cameraStream = null;
+
+async function startCamera(){
+  startBtn.disabled = true;
+  startBtn.textContent = "Starting...";
+  feedbackStatus.textContent = "Starting camera...";
+  feedbackSub.textContent = "Allow camera access when your browser asks.";
+  try{
+    if(!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1'){
+      throw new Error("CAMERA_SECURE_CONTEXT");
+    }
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      throw new Error("CAMERA_UNAVAILABLE");
+    }
+
+    if(cameraStream){
+      cameraStream.getTracks().forEach(track=>track.stop());
+      cameraStream = null;
+    }
+
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      audio:false,
+      video:{
+        facingMode:{ideal:"user"},
+        width:{ideal:1280},
+        height:{ideal:720}
+      }
+    });
+
+    video.srcObject = cameraStream;
+    video.muted = true;
+    video.playsInline = true;
+    await new Promise((resolve,reject)=>{
+      const timeout=setTimeout(()=>reject(new Error("CAMERA_TIMEOUT")),8000);
+      video.onloadedmetadata=()=>{ clearTimeout(timeout); resolve(); };
+    });
+    await video.play();
+
+    if(!video.videoWidth || !video.videoHeight) throw new Error("CAMERA_NO_VIDEO");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    if(!landmarker) await initLandmarker();
+    stageOverlay.style.display = 'none';
+    running = true;
+    startBtn.textContent = "Camera on";
+    if(mode === 'dance'){ resetDanceUI(); }
+    else if(mode === 'rehab'){ resetRehabUI(); }
+    else { setupBadge(); }
+    requestAnimationFrame(loop);
+  }catch(e){
+    if(cameraStream){
+      cameraStream.getTracks().forEach(track=>track.stop());
+      cameraStream = null;
+    }
+    running=false;
+    startBtn.disabled = false;
+    startBtn.textContent = "Turn on camera";
+    feedbackStatus.textContent = "Camera could not start";
+    const name=e && e.name ? e.name : '';
+    if(e && e.message === "CAMERA_SECURE_CONTEXT"){
+      feedbackSub.textContent = "This camera app must be opened from HTTPS (or localhost). A downloaded HTML file opened directly may be blocked by your browser.";
+    }else if(e && e.message === "CAMERA_UNAVAILABLE"){
+      feedbackSub.textContent = "This browser does not expose camera access. Try Chrome or Safari and make sure camera permission is enabled.";
+    }else if(name === 'NotAllowedError' || name === 'PermissionDeniedError'){
+      feedbackSub.textContent = "Camera permission was denied. Allow camera access for this site in your browser settings, then try again.";
+    }else if(name === 'NotFoundError'){
+      feedbackSub.textContent = "No camera was found on this device.";
+    }else if(name === 'NotReadableError'){
+      feedbackSub.textContent = "The camera is busy in another app or browser tab. Close it and try again.";
+    }else if(e && e.message === "CAMERA_TIMEOUT"){
+      feedbackSub.textContent = "The camera did not respond. Check permission and try again.";
+    }else{
+      feedbackSub.textContent = (e && e.message) ? e.message : "Could not access the camera. Check browser camera permission.";
+    }
+  }
+}
+startBtn.addEventListener('click', startCamera);
+
+rehabStartBtn.addEventListener('click', ()=>{
+  if(rehabRunning) return;
+  rehabRunning = true;
+  rehabStartTs = performance.now();
+  rehabSessionBest = 0;
+  rehabRepCount = 0;
+  rehabRepState = currentRehab.startState || "up";
+  rehabHoldSeconds = 0; rehabBestHold = 0; rehabLastTick = performance.now();
+  rehabHud.style.display = 'block';
+  rehabStartBtn.disabled = true;
+  rehabStartBtn.textContent = 'Session running...';
+  speakCoach(currentRehab.instr, 'rehab-instruction:'+currentRehab.id, true);
+  rehabResultSlot.innerHTML = '';
+  rehabLiveGoal.textContent = currentRehab.type==='rom' ? `of ${rehabGoal}${currentRehab.unit} goal` : (currentRehab.type==='hold' ? 'best hold' : 'reps so far');
+});
+
+function finishRehabSession(){
+  rehabRunning = false;
+  rehabHud.style.display = 'none';
+  rehabStartBtn.disabled = false;
+  rehabStartBtn.textContent = 'Start another session';
+
+  const value = currentRehab.type === 'rom' ? rehabSessionBest : (currentRehab.type === 'hold' ? rehabBestHold : rehabRepCount);
+  const history = loadRehabHistory(currentRehab.id);
+  const previous = history.length ? history[history.length-1].value : null;
+  const today = new Date();
+  const dateLabel = (today.getMonth()+1)+'/'+today.getDate();
+  history.push({date: dateLabel, value: Math.round(value*10)/10});
+  saveRehabHistory(currentRehab.id, history);
+  logSession(currentRehab.id);
+  renderProgramPanel();
+
+  let deltaHtml = 'First session logged — this becomes your baseline.';
+  if(previous !== null){
+    const delta = Math.round((value - previous)*10)/10;
+    if(delta > 0) deltaHtml = `<span class="delta up">+${delta}${currentRehab.unit || ''} from last session</span>`;
+    else if(delta < 0) deltaHtml = `<span class="delta down">${delta}${currentRehab.unit || ''} from last session</span>`;
+    else deltaHtml = `<span class="delta down">Same as last session</span>`;
+  }
+
+  rehabResultSlot.innerHTML = `<div class="rehab-result"><div class="val">${Math.round(value*10)/10}${currentRehab.unit||''}</div><div class="delta-wrap">${deltaHtml}</div></div>`;
+  rehabChartWrap.style.display = 'block';
+  drawRehabChart(loadRehabHistory(currentRehab.id), currentRehab.type==='rom' ? rehabGoal : null);
+}
+
+function landmarkConfidence(p){
+  if(!p) return 0;
+  const visibility = p.visibility == null ? 1 : p.visibility;
+  const presence = p.presence == null ? 1 : p.presence;
+  return Math.min(visibility, presence);
+}
+
+function smoothLandmarks(lm){
+  if(!smoothedLandmarks){
+    smoothedLandmarks = lm.map(p=>({...p}));
+    return smoothedLandmarks;
+  }
+  return lm.map((p,i)=>{
+    const prev = smoothedLandmarks[i] || p;
+    const alpha = 0.35;
+    return {
+      ...p,
+      x: prev.x*(1-alpha) + p.x*alpha,
+      y: prev.y*(1-alpha) + p.y*alpha,
+      z: (prev.z || 0)*(1-alpha) + (p.z || 0)*alpha,
+      visibility: p.visibility == null ? prev.visibility : (prev.visibility*(1-alpha) + p.visibility*alpha),
+      presence: p.presence == null ? prev.presence : (prev.presence*(1-alpha) + p.presence*alpha)
+    };
+  });
+}
+
+function checkConfidence(check,lm){
+  const indices = check.pts ? check.pts : [check.a,check.b];
+  const vals = indices.filter(i=>i!==undefined).map(i=>landmarkConfidence(lm[i]));
+  return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 1;
+}
+
+function movementConfidence(lm){
+  const required = [
+    L.lShoulder,L.rShoulder,L.lHip,L.rHip,
+    L.lKnee,L.rKnee,L.lAnkle,L.rAnkle
+  ];
+  const vals = required.map(i=>landmarkConfidence(lm[i]));
+  return vals.reduce((a,b)=>a+b,0)/vals.length;
+}
+
+function resetMovementQuality(){
+  repFrames = 0;
+  repBadFrames = 0;
+  repDepthReached = false;
+  lastGoodRepQuality = null;
+  lastCoachCheck = null;
+  smoothedLandmarks = null;
+}
+
+function speakCoach(text, key=text, force=false){
+  if(!voiceEnabled || !('speechSynthesis' in window) || !text) return;
+  const now=performance.now();
+  if(!force && key===lastSpokenKey && now-lastSpokenAt<3500) return;
+  if(!force && now-lastSpokenAt<1800) return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='en-IN';
+  u.rate=0.95;
+  u.pitch=1;
+  window.speechSynthesis.speak(u);
+  lastSpokenKey=key; lastSpokenAt=now;
+}
+function voiceForFeedback(failed){
+  if(failed.length){
+    const f=failed.slice().sort((a,b)=>(a.priority||99)-(b.priority||99))[0];
+    speakCoach(f.cue || 'Adjust your form', 'bad:'+((f.cue)||''));
+  } else {
+    speakCoach('Good form', 'good');
+  }
+}
+function drawCoachMarkers(ctx2,lm,checks){
+  const W=canvas.width,H=canvas.height;
+  checks.slice(0,3).forEach(c=>{
+    const idx=c.joint; if(idx===undefined || !lm[idx]) return;
+    const p=lm[idx], ok=c._ok!==false;
+    const conf=landmarkConfidence(p);
+    const color=conf<0.45?'#E0B84A':(ok?'#63B37C':'#E15252');
+    ctx2.save();
+    ctx2.strokeStyle=color; ctx2.lineWidth=3;
+    ctx2.beginPath(); ctx2.arc(p.x*W,p.y*H,15,0,Math.PI*2); ctx2.stroke();
+    ctx2.fillStyle=color; ctx2.font='600 10px Inter,sans-serif';
+    ctx2.fillText(ok?'OK':'ADJUST',p.x*W+18,p.y*H+4);
+    ctx2.restore();
+  });
+}
+
+function drawAngleArc(ctx2,lm,check,ok){
+  if(!check.pts || check.pts.length !== 3) return null;
+  const [a,b,c] = check.pts.map(i=>lm[i]);
+  if(!a || !b || !c) return null;
+  const W=canvas.width,H=canvas.height;
+  const bx=b.x*W, by=b.y*H;
+  const a1=Math.atan2(a.y*H-by,a.x*W-bx);
+  const a2=Math.atan2(c.y*H-by,c.x*W-bx);
+  let delta=a2-a1;
+  while(delta > Math.PI) delta -= Math.PI*2;
+  while(delta < -Math.PI) delta += Math.PI*2;
+  const color = ok ? "#63B37C" : "#E15252";
+  ctx2.save();
+  ctx2.strokeStyle=color;
+  ctx2.lineWidth=4;
+  ctx2.beginPath();
+  ctx2.arc(bx,by,22, a1, a1+delta, delta<0);
+  ctx2.stroke();
+  ctx2.fillStyle=color;
+  ctx2.font="600 11px Space Grotesk, sans-serif";
+  ctx2.fillText(Math.round(angle(a,b,c))+"°", bx+25, by-8);
+  ctx2.restore();
+  return Math.round(angle(a,b,c));
+}
+
+function priorityChecks(checks, failed){
+  return checks.map((c,i)=>({...c,_index:i})).sort((a,b)=>(a.priority||99)-(b.priority||99))
+    .filter(c=>failed.some(f=>f.check===c || f._index===c._index)).slice(0,2);
+}
+
+function evalCheck(check, lm, atBottom){
+  if(check.type === "level"){
+    const a = lm[check.pts[0]], b = lm[check.pts[1]];
+    return Math.abs(a.y - b.y) <= check.tol;
+  }
+  if(check.type === "xoffset"){
+    if(check.onlyAtBottom && !atBottom) return true;
+    const a = lm[check.a], b = lm[check.b];
+    return Math.abs(a.x - b.x) <= check.tol;
+  }
+  if(check.type === "above"){
+    const a = lm[check.pts[0]], b = lm[check.pts[1]];
+    return a.y < b.y - 0.03;
+  }
+  if(check.type === "below"){
+    const a = lm[check.pts[0]], b = lm[check.pts[1]];
+    return a.y > b.y + 0.03;
+  }
+  if(check.type === "near"){
+    const a = lm[check.pts[0]], b = lm[check.pts[1]];
+    return dist(a,b) <= check.tol;
+  }
+  if(check.type === "far"){
+    const a = lm[check.pts[0]], b = lm[check.pts[1]];
+    return dist(a,b) >= check.tol;
+  }
+  const [p1,p2,p3] = check.pts.map(i=>lm[i]);
+  const ang = angle(p1,p2,p3);
+  if(check.onlyAtBottom){
+    if(!atBottom) return true;
+    const [min,max] = check.range2 || check.range;
+    return ang >= min && ang <= max;
+  }
+  return ang >= check.range[0] && ang <= check.range[1];
+}
+
+function drawSkeleton(lm, jointStatus, activeChecks=[]){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const W = canvas.width, H = canvas.height;
+  const pairs = [
+    [L.lShoulder,L.rShoulder],[L.lShoulder,L.lElbow],[L.lElbow,L.lWrist],
+    [L.rShoulder,L.rElbow],[L.rElbow,L.rWrist],
+    [L.lShoulder,L.lHip],[L.rShoulder,L.rHip],[L.lHip,L.rHip],
+    [L.lHip,L.lKnee],[L.lKnee,L.lAnkle],[L.rHip,L.rKnee],[L.rKnee,L.rAnkle],
+    [L.lAnkle,L.lFoot],[L.rAnkle,L.rFoot]
+  ];
+  ctx.strokeStyle = "rgba(234,243,241,0.55)";
+  ctx.lineWidth = 3;
+  pairs.forEach(([a,b])=>{
+    if(!lm[a]||!lm[b]) return;
+    ctx.beginPath();
+    ctx.moveTo(lm[a].x*W, lm[a].y*H);
+    ctx.lineTo(lm[b].x*W, lm[b].y*H);
+    ctx.stroke();
+  });
+  Object.keys(jointStatus).forEach(idx=>{
+    const p = lm[idx];
+    if(!p) return;
+    ctx.beginPath();
+    ctx.arc(p.x*W, p.y*H, 8, 0, Math.PI*2);
+    const conf=landmarkConfidence(p);
+    ctx.fillStyle = conf < 0.45 ? "#E0B84A" : (jointStatus[idx]===null ? "#5FA8D3" : (jointStatus[idx] ? "#63B37C" : "#E15252"));
+    ctx.fill();
+  });
+
+  // Show angle arcs for the most relevant checks instead of covering the user with graphics.
+  let displayedAngle=null;
+  activeChecks.slice(0,2).forEach(check=>{
+    const ok = check._ok !== false;
+    const val=drawAngleArc(ctx,lm,check,ok);
+    if(val!=null && displayedAngle==null){
+      displayedAngle=val;
+      lastCoachCheck=check;
+    }
+  });
+  drawCoachMarkers(ctx,lm,activeChecks);
+  if(displayedAngle!=null){
+    coachMeasure.style.display='block';
+    coachAngle.textContent=displayedAngle+"°";
+    coachAngleLabel.textContent=lastCoachCheck?.name || 'angle';
+  } else {
+    coachMeasure.style.display='none';
+  }
+}
+function updateFeedback(failed, checks=[], lm=lastLandmarks){
+  voiceForFeedback(failed);
+  if(currentExercise.type === "rep"){
+    const [p1,p2,p3] = currentExercise.repJoint.map(i=>lm[i]);
+    if(!p1||!p2||!p3) return;
+    const ang = angle(p1,p2,p3);
+
+    // Temporal quality: a rep must spend most of its frames in good form.
+    repFrames += 1;
+    if(failed.length > 0) repBadFrames += 1;
+
+    if(repState === "up" && ang < currentExercise.downBelow){
+      repState = "down";
+      repDepthReached = true;
+      repFrames = 0;
+      repBadFrames = 0;
+    }
+    if(repState === "down" && ang > currentExercise.upAbove){
+      const badRatio = repFrames ? repBadFrames/repFrames : 1;
+      const quality = Math.round((1-badRatio)*100);
+      lastGoodRepQuality = quality;
+      if(repDepthReached && badRatio <= 0.25){
+        repCount += 1;
+      }
+      repState = "up";
+      repFrames = 0;
+      repBadFrames = 0;
+      repDepthReached = false;
+    }
+    badgeVal.textContent = repCount;
+  } else {
+    if(failed.length === 0){
+      holdSeconds += (performance.now()-lastFrameTime)/1000;
+      badgeVal.textContent = Math.floor(holdSeconds);
+    }
+  }
+
+  if(failed.length === 0){
+    feedbackCard.className = "feedback-card ok";
+    feedbackStatus.className = "feedback-status ok";
+    feedbackStatus.innerHTML = `<span class="dot ok"></span> Good form`;
+    feedbackSub.textContent = currentExercise.type === "rep" ? "Keep going at a controlled pace." : "Hold steady — nice alignment.";
+  } else {
+    feedbackCard.className = "feedback-card bad";
+    feedbackStatus.className = "feedback-status bad";
+    feedbackStatus.innerHTML = `<span class="dot bad"></span> Adjust your form`;
+    const top = failed.slice(0,2);
+    feedbackSub.innerHTML = `<ul class="cues">${top.map(f=>`<li>${f.cue || f}</li>`).join('')}</ul>`;
+  }
+}
+function startDanceRoutine(){
+  danceRunning = true;
+  danceMoveIndex = 0;
+  danceScore = 0;
+  danceCombo = 1;
+  danceHits = 0;
+  danceSampleFrames = 0;
+  dancePassedFrames = 0;
+  lastDanceSpokenMove = -1;
+  moveStartTs = performance.now();
+  badge.style.display = 'block';
+  badgeLbl.textContent = 'score';
+  badgeVal.textContent = '0';
+  danceHud.style.display = 'block';
+  feedbackCard.className = "feedback-card idle";
+  feedbackStatus.textContent = "Follow the pose";
+  feedbackSub.textContent = "Match it before the bar runs out.";
+}
+
+function endDanceRoutine(){
+  danceRunning = false;
+  danceHud.style.display = 'none';
+  if(danceScore > danceBest){
+    danceBest = danceScore;
+    try{ localStorage.setItem('formcoach_dance_best', String(danceBest)); }catch(e){}
+  }
+  feedbackCard.className = danceHits >= currentRoutine.sequence.length/2 ? "feedback-card ok" : "feedback-card bad";
+  feedbackStatus.className = "feedback-status";
+  feedbackStatus.textContent = "Routine complete";
+  feedbackSub.innerHTML = `<div class="dance-results"><div class="score">${danceScore}</div><div class="sub">${danceHits}/${currentRoutine.sequence.length} moves hit &middot; best ${danceBest}</div></div>`;
+  const old = document.getElementById('dance-start-btn');
+  if(old) old.remove();
+  const b = document.createElement('button');
+  b.id = 'dance-start-btn';
+  b.className = 'start-btn dance-start';
+  b.style.marginTop = '8px';
+  b.textContent = 'Dance again';
+  b.addEventListener('click', startDanceRoutine);
+  feedbackCard.appendChild(b);
+}
+
+function danceTick(now){
+  const move = currentRoutine.sequence[danceMoveIndex];
+  moveNameEl.textContent = move.name;
+  const elapsed = now - moveStartTs;
+  const pct = Math.max(0, 100 - (elapsed/move.duration)*100);
+  moveBarEl.style.width = pct + '%';
+
+  if(lastLandmarks && elapsed < move.duration){
+    let passed = 0;
+    move.checks.forEach(check=>{ if(evalCheck(check, lastLandmarks, false)) passed++; });
+    const ratio = move.checks.length ? passed/move.checks.length : 0;
+    danceSampleFrames++;
+    if(ratio >= 0.6) dancePassedFrames++;
+  }
+
+  if(elapsed >= move.duration){
+    const ratio = danceSampleFrames ? dancePassedFrames/danceSampleFrames : 0;
+    const hit = ratio >= 0.6;
+    if(hit){
+      danceHits += 1;
+      danceScore += 100 * danceCombo;
+      danceCombo += 1;
+      stage.classList.add('hit');
+    } else {
+      danceCombo = 1;
+      stage.classList.add('miss');
+    }
+    setTimeout(()=>stage.classList.remove('hit','miss'), 250);
+    badgeVal.textContent = danceScore;
+
+    danceMoveIndex += 1;
+    if(danceMoveIndex >= currentRoutine.sequence.length){
+      endDanceRoutine();
+    } else {
+      moveStartTs = now;
+      danceSampleFrames = 0;
+      dancePassedFrames = 0;
+    }
+  }
+}
+
+function rehabMirrorLandmarks(lm){
+  if(rehabSide === "left") return lm;
+  const out = lm.map(p=>({...p}));
+  const pairs = [[L.lShoulder,L.rShoulder],[L.lElbow,L.rElbow],[L.lWrist,L.rWrist],[L.lHip,L.rHip],[L.lKnee,L.rKnee],[L.lAnkle,L.rAnkle],[L.lHeel,L.rHeel],[L.lFoot,L.rFoot]];
+  pairs.forEach(([a,b])=>{ const t=out[a]; out[a]=out[b]; out[b]=t; });
+  return out;
+}
+function rehabMappedIndex(i){
+  if(rehabSide === "left") return i;
+  const map=new Map([[L.lShoulder,L.rShoulder],[L.rShoulder,L.lShoulder],[L.lElbow,L.rElbow],[L.rElbow,L.lElbow],[L.lWrist,L.rWrist],[L.rWrist,L.lWrist],[L.lHip,L.rHip],[L.rHip,L.lHip],[L.lKnee,L.rKnee],[L.rKnee,L.lKnee],[L.lAnkle,L.rAnkle],[L.rAnkle,L.lAnkle],[L.lHeel,L.rHeel],[L.rHeel,L.lHeel],[L.lFoot,L.rFoot],[L.rFoot,L.lFoot]]);
+  return map.get(i) ?? i;
+}
+
+function rehabTick(now, lm){
+  const elapsed = now - rehabStartTs;
+  const pct = Math.max(0, 100 - (elapsed/currentRehab.duration)*100);
+  rehabTimerBar.style.width = pct + '%';
+  const dt = rehabLastTick ? Math.min(0.1,(now-rehabLastTick)/1000) : 0;
+  rehabLastTick = now;
+  const xlm = rehabMirrorLandmarks(lm);
+
+  if(currentRehab.type === 'rom'){
+    const val = Math.max(0, currentRehab.compute(xlm));
+    if(val > rehabSessionBest) rehabSessionBest = val;
+    rehabLiveVal.textContent = Math.round(rehabSessionBest);
+  } else if(currentRehab.type === 'hold'){
+    const [p1,p2,p3] = currentRehab.holdJoint.map(i=>xlm[i]);
+    if(!p1 || !p2 || !p3) return;
+    const ang = angle(p1,p2,p3);
+    const ok = ang >= currentRehab.holdRange[0] && ang <= currentRehab.holdRange[1];
+    rehabHoldSeconds = ok ? rehabHoldSeconds + dt : 0;
+    rehabBestHold = Math.max(rehabBestHold, rehabHoldSeconds);
+    rehabLiveVal.textContent = rehabBestHold.toFixed(1);
+    rehabHoldStatus.textContent = ok ? `Holding: ${rehabHoldSeconds.toFixed(1)}s` : 'Move into the target position to begin the hold.';
+  } else {
+    const [p1,p2,p3] = currentRehab.repJoint.map(i=>xlm[i]);
+    if(!p1 || !p2 || !p3) return;
+    const ang = angle(p1,p2,p3);
+    if(rehabRepState === "up" && ang < currentRehab.downBelow) rehabRepState = "down";
+    if(rehabRepState === "down" && ang > currentRehab.upAbove){ rehabRepState = "up"; rehabRepCount += 1; }
+    rehabLiveVal.textContent = rehabRepCount;
+  }
+
+  if(elapsed >= currentRehab.duration) finishRehabSession();
+}
+
+function loop(ts){
+  if(!running) return;
+  if(landmarker && video.readyState >= 2){
+    const result = landmarker.detectForVideo(video, ts);
+    if(result.landmarks && result.landmarks.length > 0){
+      const lm = smoothLandmarks(result.landmarks[0]);
+      lastLandmarks = lm;
+      const overallConfidence = movementConfidence(lm);
+
+      if(overallConfidence < 0.45){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        coachMeasure.style.display='none';
+        feedbackCard.className = "feedback-card idle";
+        feedbackStatus.className = "feedback-status";
+        feedbackStatus.textContent = "Move into view";
+        feedbackSub.textContent = "Keep your full body visible and improve the camera angle or lighting.";
+      } else if(mode === 'dance'){
+        const jointStatus = {};
+        const activeChecks = danceRunning ? currentRoutine.sequence[danceMoveIndex].checks.map(c=>({
+          ...c, _ok: evalCheck(c, lm, false)
+        })) : [];
+        if(danceRunning){
+          activeChecks.forEach(c=>{
+            if(c.joint!==undefined) jointStatus[c.joint] = c._ok;
+          });
+          const badDance=activeChecks.filter(c=>c._ok===false);
+          if(danceMoveIndex!==lastDanceSpokenMove){
+            speakCoach(currentRoutine.sequence[danceMoveIndex].name, 'move:'+danceMoveIndex, true);
+            lastDanceSpokenMove=danceMoveIndex;
+          } else if(badDance.length){
+            speakCoach(badDance[0].cue || 'Adjust your position', 'dance:'+danceMoveIndex+':'+(badDance[0].name||badDance[0].cue||''));
+          }
+        }
+        drawSkeleton(lm, jointStatus, activeChecks);
+        if(danceRunning) danceTick(performance.now());
+      } else if(mode === 'rehab'){
+        const jointStatus = {};
+        const mappedJoint = rehabMappedIndex(currentRehab.joint);
+        jointStatus[mappedJoint] = null;
+        const rehabChecks=[];
+        if(currentRehab.type==='rep' || currentRehab.type==='hold') {
+          const pts = currentRehab.holdJoint || currentRehab.repJoint;
+          const mappedPts = pts.map(i=>rehabMappedIndex(i));
+          const check = {pts:mappedPts, joint:mappedJoint, range:currentRehab.holdRange || [currentRehab.downBelow,currentRehab.upAbove], _ok:true, name:currentRehab.name};
+          if(pts.every(i=>lm[rehabMappedIndex(i)])){
+            const a=lm[mappedPts[0]], b=lm[mappedPts[1]], c=lm[mappedPts[2]];
+            const val=angle(a,b,c);
+            check._ok = currentRehab.type==='hold' ? (val>=currentRehab.holdRange[0] && val<=currentRehab.holdRange[1]) : true;
+            check._angle=val;
+          }
+          rehabChecks.push(check);
+        }
+        drawSkeleton(lm, jointStatus, rehabChecks);
+        if(rehabRunning){
+          rehabTick(performance.now(), lm);
+          if(currentRehab.type==='hold') speakCoach(rehabHoldSeconds>0 ? 'Hold steady' : 'Move into your target position', 'rehabhold:'+(rehabHoldSeconds>0));
+        }
+      } else {
+        const atBottom = currentExercise.type === "rep" ? (repState === "down") : false;
+        const jointStatus = {};
+        const failed = [];
+        const evaluated = [];
+        currentExercise.checks.forEach(check=>{
+          const confidence = checkConfidence(check,lm);
+          const ok = confidence < 0.45 ? false : evalCheck(check, lm, atBottom);
+          const item = {...check,_ok:ok,_confidence:confidence};
+          evaluated.push(item);
+          if(check.joint !== undefined) jointStatus[check.joint] = ok;
+          if(!ok) failed.push(item);
+        });
+        const relevant = (failed.length ? failed : evaluated).sort((a,b)=>(a.priority||99)-(b.priority||99)).slice(0,2);
+        drawSkeleton(lm, jointStatus, relevant);
+        updateFeedback(failed, evaluated, lm);
+      }
+    } else {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      coachMeasure.style.display='none';
+      if(mode !== 'dance' && mode !== 'rehab'){
+        feedbackCard.className = "feedback-card idle";
+        feedbackStatus.className = "feedback-status";
+        feedbackStatus.textContent = "No person detected";
+        feedbackSub.textContent = "Step back so your full body is in frame.";
+      }
+    }
+  }
+  lastFrameTime = performance.now();
+  requestAnimationFrame(loop);
+}
+voiceToggle.addEventListener('click', ()=>{
+  voiceEnabled=!voiceEnabled;
+  voiceToggle.classList.toggle('on', voiceEnabled);
+  voiceToggle.setAttribute('aria-pressed', String(voiceEnabled));
+  voiceToggle.textContent=voiceEnabled ? '🔊 Voice ON' : '🔇 Voice OFF';
+  if(!voiceEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+  if(voiceEnabled) speakCoach('Voice coaching on','voice-on',true);
+});
+
+renderExerciseChips();
+resetMovementQuality();
+</script>
+</body>
+</html>
